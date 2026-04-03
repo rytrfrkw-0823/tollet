@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="TOLLET">
+  <meta name="theme-color" content="#0C1F3F">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>TOLLET</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet">
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; overflow: hidden; }
+    body { font-family: -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif; background: #0C1F3F; }
+
+    /* ── Screen system ── */
+    .screen {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      transition: opacity 0.25s ease, transform 0.3s ease;
+      will-change: transform, opacity;
+    }
+    .screen.hidden       { opacity: 0; pointer-events: none; transform: none; }
+    .screen.slide-right  { transform: translateX(100%); }
+    .screen.slide-left   { transform: translateX(-30%); opacity: 0.6; }
+
+    /* ══════════════════════════════════════
+       SCREEN 1 : LAUNCH
+    ══════════════════════════════════════ */
+    #launch {
+      background: #0C1F3F;
+      justify-content: center;
+      align-items: center;
+      padding:
+        max(env(safe-area-inset-top), 48px)
+        36px
+        max(env(safe-area-inset-bottom), 48px);
+    }
+    /* Subtle grid overlay */
+    #launch::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        90deg,
+        transparent, transparent 59px,
+        rgba(255,255,255,0.018) 59px, rgba(255,255,255,0.018) 60px
+      );
+      pointer-events: none;
+    }
+    .launch-wordmark {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: 52px; font-weight: 600;
+      letter-spacing: 0.18em;
+      color: #fff;
+      margin-bottom: 8px;
+      position: relative;
+    }
+    .launch-rule {
+      width: 32px; height: 1px;
+      background: #B8974A;
+      margin: 0 auto 20px;
+    }
+    .launch-tagline {
+      font-size: 13px; font-weight: 300;
+      color: rgba(255,255,255,0.48);
+      text-align: center;
+      letter-spacing: 0.06em; line-height: 1.8;
+      margin-bottom: 72px;
+    }
+    .btn-launch {
+      width: 100%;
+      background: #B8974A; color: #fff;
+      font-size: 14px; font-weight: 500;
+      letter-spacing: 0.1em;
+      border: none; border-radius: 4px;
+      padding: 17px; cursor: pointer;
+      margin-bottom: 16px;
+      -webkit-appearance: none;
+      transition: opacity 0.15s;
+    }
+    .btn-launch:active { opacity: 0.82; }
+    .launch-or {
+      color: rgba(255,255,255,0.2);
+      font-size: 11px; letter-spacing: 0.12em;
+      margin-bottom: 14px;
+    }
+    .input-row { width: 100%; display: flex; gap: 8px; }
+    .input-manual {
+      flex: 1;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 4px;
+      padding: 14px 16px;
+      color: rgba(255,255,255,0.85);
+      font-size: 14px; font-family: inherit;
+      -webkit-appearance: none; outline: none;
+    }
+    .input-manual::placeholder { color: rgba(255,255,255,0.28); }
+    .input-manual:focus { border-color: rgba(184,151,74,0.6); }
+    .btn-go {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 4px;
+      color: rgba(255,255,255,0.8);
+      font-size: 18px; padding: 14px 18px;
+      cursor: pointer; -webkit-appearance: none;
+      transition: opacity 0.15s;
+    }
+    .btn-go:active { opacity: 0.65; }
+
+    /* ══════════════════════════════════════
+       SCREEN 2 : LOADING
+    ══════════════════════════════════════ */
+    #loading {
+      background: #F8F7F4;
+      justify-content: center; align-items: center; gap: 18px;
+    }
+    .loading-wordmark {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: 26px; font-weight: 600;
+      letter-spacing: 0.16em; color: #0C1F3F;
+    }
+    .spinner {
+      width: 30px; height: 30px;
+      border: 2px solid #E8E6E1;
+      border-top-color: #B8974A;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-msg {
+      font-size: 13px; font-weight: 300;
+      color: #9A9590; letter-spacing: 0.04em;
+    }
+
+    /* ══════════════════════════════════════
+       SCREEN 3 : RESULTS
+    ══════════════════════════════════════ */
+    #results { background: #F8F7F4; }
+
+    .nav-bar {
+      background: #fff;
+      padding:
+        max(env(safe-area-inset-top), 14px)
+        20px 14px;
+      border-bottom: 1px solid #E8E6E1;
+      flex-shrink: 0;
+    }
+    .nav-wordmark {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: 22px; font-weight: 600;
+      letter-spacing: 0.16em; color: #0C1F3F;
+      margin-bottom: 4px;
+    }
+    .nav-sub {
+      font-size: 11px; font-weight: 300;
+      color: #9A9590; letter-spacing: 0.04em;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .nav-dot {
+      width: 5px; height: 5px;
+      background: #2E7D5E; border-radius: 50%; flex-shrink: 0;
+    }
+
+    .results-list {
+      flex: 1; overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 14px 16px max(env(safe-area-inset-bottom), 14px);
+      display: flex; flex-direction: column; gap: 10px;
+    }
+
+    .section-label {
+      font-size: 10px; font-weight: 500;
+      color: #9A9590; letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 4px 2px 6px;
+    }
+
+    /* Card */
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 16px 18px;
+      border: 1px solid #E8E6E1;
+      box-shadow: 0 1px 6px rgba(12,31,63,0.04);
+      cursor: pointer;
+      transition: transform 0.12s, opacity 0.12s;
+    }
+    .card:active { transform: scale(0.99); opacity: 0.92; }
+
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .card-left   { flex: 1; padding-right: 12px; }
+    .card-cat    { font-size: 10px; font-weight: 500; color: #9A9590; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 5px; }
+    .card-name   { font-size: 15px; font-weight: 700; color: #1A1917; margin-bottom: 7px; line-height: 1.3; }
+    .card-hours  { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #9A9590; font-weight: 300; }
+
+    .badge-open   { background: #E8F4EF; color: #2E7D5E; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 2px; }
+    .badge-closed { background: #FDECEA; color: #C0392B; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 2px; }
+
+    .score-box {
+      display: flex; flex-direction: column; align-items: center;
+      border: 1px solid #E8E6E1; border-radius: 6px;
+      padding: 10px 14px; min-width: 64px; background: #F8F7F4;
+    }
+    .score-num {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: 28px; font-weight: 600; line-height: 1; margin-bottom: 3px;
+      color: #B8974A;
+    }
+    .score-num.mid { color: #4A4845; }
+    .score-lbl { font-size: 9px; font-weight: 500; letter-spacing: 0.08em; color: #9A9590; text-transform: uppercase; }
+
+    .card-divider { height: 1px; background: #F2F1EE; margin-bottom: 12px; }
+    .card-walk    { font-size: 12px; font-weight: 500; color: #4A4845; letter-spacing: 0.02em; margin-bottom: 12px; }
+
+    .btn-map {
+      width: 100%; background: #0C1F3F; color: #fff;
+      font-size: 12px; font-weight: 500; letter-spacing: 0.1em;
+      border: none; border-radius: 4px; padding: 12px;
+      cursor: pointer; -webkit-appearance: none;
+      transition: opacity 0.15s;
+    }
+    .btn-map:active { opacity: 0.82; }
+
+    /* Empty state */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; flex: 1;
+      padding: 48px 28px; gap: 14px; text-align: center;
+    }
+    .empty-icon  { font-size: 38px; opacity: 0.35; }
+    .empty-title { font-size: 15px; font-weight: 600; color: #1A1917; }
+    .empty-sub   { font-size: 13px; color: #9A9590; font-weight: 300; line-height: 1.7; }
+    .btn-retry {
+      background: #0C1F3F; color: #fff;
+      font-size: 13px; font-weight: 500; letter-spacing: 0.08em;
+      border: none; border-radius: 4px; padding: 13px 24px;
+      cursor: pointer; -webkit-appearance: none; margin-top: 8px;
+      transition: opacity 0.15s;
+    }
+    .btn-retry:active { opacity: 0.82; }
+
+    /* ══════════════════════════════════════
+       SCREEN 4 : DETAIL
+    ══════════════════════════════════════ */
+    #detail { background: #F8F7F4; }
+
+    .detail-nav {
+      background: #fff;
+      padding:
+        max(env(safe-area-inset-top), 12px)
+        20px 14px;
+      border-bottom: 1px solid #E8E6E1;
+      display: flex; align-items: center; gap: 16px; flex-shrink: 0;
+    }
+    .back-btn {
+      color: #0C1F3F; font-size: 16px; font-weight: 400;
+      opacity: 0.65; cursor: pointer; padding: 4px;
+      -webkit-user-select: none;
+      transition: opacity 0.15s;
+    }
+    .back-btn:active { opacity: 0.3; }
+    .detail-nav-title {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: 18px; font-weight: 600;
+      letter-spacing: 0.12em; color: #0C1F3F;
+    }
+
+    .detail-body {
+      flex: 1; overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 20px 16px max(env(safe-area-inset-bottom), 110px);
+      display: flex; flex-direction: column; gap: 12px;
+    }
+
+    .detail-hero {
+      background: #fff; border-radius: 8px;
+      border: 1px solid #E8E6E1; padding: 22px 20px;
+    }
+    .detail-cat  { font-size: 10px; font-weight: 500; color: #9A9590; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px; }
+    .detail-name { font-size: 22px; font-weight: 700; color: #1A1917; margin-bottom: 20px; line-height: 1.3; }
+
+    .score-hero-row {
+      display: flex; align-items: center; gap: 20px;
+      background: #F8F7F4; border-radius: 6px;
+      padding: 18px; border: 1px solid #E8E6E1;
+    }
+    .score-hero-num {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: 64px; font-weight: 600;
+      color: #B8974A; line-height: 1; flex-shrink: 0;
+    }
+    .score-hero-right { flex: 1; min-width: 0; }
+    .score-hero-lbl  { font-size: 10px; font-weight: 500; color: #9A9590; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+    .score-bar-bg    { height: 3px; background: #E8E6E1; border-radius: 2px; overflow: hidden; margin-bottom: 10px; }
+    .score-bar-fill  { height: 100%; background: #B8974A; border-radius: 2px; transition: width 0.6s ease; }
+    .score-reason    { font-size: 12px; font-weight: 300; color: #4A4845; line-height: 1.6; letter-spacing: 0.02em; }
+
+    .info-block { background: #fff; border-radius: 8px; border: 1px solid #E8E6E1; overflow: hidden; }
+    .info-row   { display: flex; align-items: flex-start; gap: 14px; padding: 15px 18px; border-bottom: 1px solid #F2F1EE; }
+    .info-row:last-child { border-bottom: none; }
+    .info-icon  { font-size: 15px; width: 20px; text-align: center; opacity: 0.5; margin-top: 1px; flex-shrink: 0; }
+    .info-lbl   { font-size: 10px; font-weight: 500; color: #9A9590; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 3px; }
+    .info-val   { font-size: 14px; font-weight: 400; color: #1A1917; line-height: 1.5; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    .google-row { background: #fff; border-radius: 8px; border: 1px solid #E8E6E1; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; }
+    .google-lbl { font-size: 11px; color: #9A9590; font-weight: 300; }
+    .google-stars { font-size: 13px; color: #B8974A; font-weight: 600; letter-spacing: 0.04em; }
+
+    /* Fixed CTA */
+    .fixed-cta {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(248,247,244,0.96);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 14px 16px max(env(safe-area-inset-bottom), 16px);
+      border-top: 1px solid #E8E6E1;
+    }
+    .btn-cta {
+      width: 100%; background: #0C1F3F; color: #fff;
+      font-size: 14px; font-weight: 500; letter-spacing: 0.1em;
+      border: none; border-radius: 4px; padding: 17px;
+      cursor: pointer; -webkit-appearance: none;
+      transition: opacity 0.15s;
+    }
+    .btn-cta:active { opacity: 0.82; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: max(env(safe-area-inset-bottom), 24px);
+      left: 50%; transform: translateX(-50%) translateY(8px);
+      background: rgba(26,25,23,0.92);
+      color: #fff; font-size: 13px; font-weight: 300;
+      padding: 11px 20px; border-radius: 8px;
+      opacity: 0; transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none; white-space: nowrap;
+      z-index: 999; letter-spacing: 0.02em;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- ══ LAUNCH ══ -->
+<div id="launch" class="screen">
+  <div class="launch-wordmark">TOLLET</div>
+  <div class="launch-rule"></div>
+  <div class="launch-tagline">清潔なトイレを、今すぐ見つける。</div>
+  <button class="btn-launch" id="btnGeo">— 現在地を使って探す —</button>
+  <div class="launch-or">または</div>
+  <div class="input-row">
+    <input class="input-manual" id="manualInput" type="text" placeholder="場所・駅名を入力..." autocomplete="off">
+    <button class="btn-go" id="btnText">→</button>
+  </div>
+</div>
+
+<!-- ══ LOADING ══ -->
+<div id="loading" class="screen hidden">
+  <div class="loading-wordmark">TOLLET</div>
+  <div class="spinner"></div>
+  <div class="loading-msg" id="loadingMsg">現在地を取得中...</div>
+</div>
+
+<!-- ══ RESULTS ══ -->
+<div id="results" class="screen hidden">
+  <div class="nav-bar">
+    <div class="nav-wordmark">TOLLET</div>
+    <div class="nav-sub">
+      <span class="nav-dot"></span>
+      <span id="navSub">現在地付近 ／ スコア60以上を表示</span>
+    </div>
+  </div>
+  <div class="results-list" id="resultsList"></div>
+</div>
+
+<!-- ══ DETAIL ══ -->
+<div id="detail" class="screen hidden slide-right">
+  <div class="detail-nav">
+    <div class="back-btn" id="backBtn">‹ 戻る</div>
+    <div class="detail-nav-title">TOLLET</div>
+  </div>
+  <div class="detail-body" id="detailBody"></div>
+  <div class="fixed-cta">
+    <button class="btn-cta" id="ctaBtn">Google Maps で開く</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// CONFIG
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const API_KEY = 'YOUR_API_KEY_HERE';
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SCORE SYSTEM
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const TYPE_SCORES = {
+  lodging: 90, hotel: 90,
+  shopping_mall: 80, department_store: 80,
+  movie_theater: 75, museum: 75, art_gallery: 75,
+  convenience_store: 65, supermarket: 65, grocery_or_supermarket: 65,
+  train_station: 55, subway_station: 55, transit_station: 50, bus_station: 45,
+  park: 35,
+};
+
+const TYPE_LABELS = {
+  lodging: 'ホテル', hotel: 'ホテル',
+  shopping_mall: '商業施設', department_store: '百貨店',
+  movie_theater: '映画館', museum: 'ミュージアム', art_gallery: 'ギャラリー',
+  convenience_store: 'コンビニ', supermarket: 'スーパー', grocery_or_supermarket: 'スーパー',
+  train_station: '駅', subway_station: '駅', transit_station: '交通施設', bus_station: 'バスターミナル',
+  park: '公園',
+};
+
+const TYPE_REASONS = {
+  lodging: 'ホテル施設のため管理が徹底されています。',
+  hotel: 'ホテル施設のため管理が徹底されています。',
+  shopping_mall: '商業施設のため清掃スタッフが常駐しています。',
+  department_store: '百貨店のため清掃スタッフが常駐しています。',
+  movie_theater: '管理された施設で利用者層が安定しています。',
+  museum: '管理された施設で利用者層が安定しています。',
+  art_gallery: '管理された施設で利用者層が安定しています。',
+  convenience_store: '店員が管理していますが不特定多数が利用します。',
+  supermarket: '店員が管理していますが不特定多数が利用します。',
+  grocery_or_supermarket: '店員が管理していますが不特定多数が利用します。',
+  train_station: '利用者が多く、管理状況にばらつきがあります。',
+  subway_station: '利用者が多く、管理状況にばらつきがあります。',
+  transit_station: '利用者が多く、管理状況にばらつきがあります。',
+  park: '公共スペースのため管理が行き届いていない場合があります。',
+};
+
+function getBaseScore(types) {
+  let s = 40;
+  for (const t of types) { if (TYPE_SCORES[t] !== undefined) s = Math.max(s, TYPE_SCORES[t]); }
+  return s;
+}
+function getLabel(types) {
+  for (const t of types) { if (TYPE_LABELS[t]) return TYPE_LABELS[t]; }
+  return '施設';
+}
+function getReason(types) {
+  for (const t of types) { if (TYPE_REASONS[t]) return TYPE_REASONS[t]; }
+  return 'この施設のスコアは施設タイプに基づいて算出されています。';
+}
+function calcScore(place) {
+  const base = getBaseScore(place.types || []);
+  const correction = ((place.rating || 3.0) - 3.0) * 10;
+  return Math.min(100, Math.max(0, Math.round(base + correction)));
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DISTANCE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2
+          + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+const walkMin = m => Math.max(1, Math.ceil(m / 80));
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// STATE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let currentLat = null, currentLng = null;
+let allResults = [], threshold = 60;
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SCREEN MANAGEMENT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.add('hidden');
+    s.classList.remove('slide-left');
+  });
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function goToDetail() {
+  const d = document.getElementById('detail');
+  document.getElementById('results').classList.add('slide-left');
+  d.classList.remove('hidden');
+  requestAnimationFrame(() => d.classList.remove('slide-right'));
+}
+
+function goBack() {
+  const d = document.getElementById('detail');
+  const r = document.getElementById('results');
+  d.classList.add('slide-right');
+  r.classList.remove('slide-left');
+  setTimeout(() => d.classList.add('hidden'), 300);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// TOAST
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function toast(msg, ms = 3200) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), ms);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// API
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function fetchNearby(lat, lng) {
+  const res = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': API_KEY,
+      'X-Goog-FieldMask': [
+        'places.id', 'places.displayName', 'places.formattedAddress',
+        'places.types', 'places.rating',
+        'places.currentOpeningHours', 'places.regularOpeningHours',
+        'places.location',
+      ].join(','),
+    },
+    body: JSON.stringify({
+      includedTypes: [
+        'lodging', 'shopping_mall', 'department_store',
+        'convenience_store', 'movie_theater', 'museum',
+        'train_station', 'subway_station', 'park',
+      ],
+      maxResultCount: 20,
+      locationRestriction: {
+        circle: { center: { latitude: lat, longitude: lng }, radius: 500 }
+      },
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `API ${res.status}`);
+  }
+  const data = await res.json();
+  return data.places || [];
+}
+
+async function fetchByText(query) {
+  const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': API_KEY,
+      'X-Goog-FieldMask': 'places.location,places.displayName,places.formattedAddress',
+    },
+    body: JSON.stringify({ textQuery: query, languageCode: 'ja' }),
+  });
+  if (!res.ok) throw new Error(`API ${res.status}`);
+  const data = await res.json();
+  return data.places?.[0] || null;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PROCESS & RENDER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function process(rawPlaces, lat, lng) {
+  return rawPlaces.map(p => {
+    const plat = p.location?.latitude, plng = p.location?.longitude;
+    const dist = (plat && plng) ? haversine(lat, lng, plat, plng) : 9999;
+
+    // Today's closing time
+    const today = new Date().getDay();
+    const dayIdx = today === 0 ? 6 : today - 1;
+    const todayStr = (p.regularOpeningHours?.weekdayDescriptions
+                   ?? p.currentOpeningHours?.weekdayDescriptions)?.[dayIdx] ?? '';
+    const closeMatch = todayStr.match(/[〜–\-]\s*(\d{1,2}:\d{2})/);
+
+    return {
+      id:          p.id,
+      name:        p.displayName?.text || '不明な施設',
+      address:     p.formattedAddress || '',
+      types:       p.types || [],
+      rating:      p.rating ?? null,
+      openNow:     p.currentOpeningHours?.openNow ?? null,
+      closingTime: closeMatch ? closeMatch[1] : null,
+      lat: plat, lng: plng, distance: dist,
+      score: calcScore(p),
+    };
+  });
+}
+
+function hoursHtml(p, showBadge = true) {
+  if (p.openNow === true) {
+    const badge = showBadge ? '<span class="badge-open">営業中</span>' : '';
+    return badge + (p.closingTime ? ` 〜 ${p.closingTime}` : '');
+  }
+  if (p.openNow === false) return '<span class="badge-closed">営業時間外</span>';
+  return '<span style="color:#9A9590;font-size:12px">営業時間情報なし</span>';
+}
+
+function renderResults(places, thr) {
+  const list = document.getElementById('resultsList');
+  const filtered = places.filter(p => p.score >= thr).sort((a, b) => a.distance - b.distance);
+
+  if (!filtered.length) {
+    const lower = thr === 60 ? 40 : null;
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🚻</div>
+        <div class="empty-title">近くに清潔なトイレが見つかりません</div>
+        <div class="empty-sub">スコア${thr}以上の施設が<br>500m以内に見つかりませんでした。</div>
+        ${lower !== null
+          ? `<button class="btn-retry" onclick="retryLower(${lower})">スコア${lower}以上で再検索</button>`
+          : ''}
+      </div>`;
+    return;
+  }
+
+  let html = `<div class="section-label">近い順に ${filtered.length} 件</div>`;
+
+  for (const p of filtered) {
+    const cls     = p.score >= 80 ? '' : 'mid';
+    const min     = walkMin(p.distance);
+    const mapsUrl = `https://maps.google.com/maps?daddr=${p.lat},${p.lng}&dirflg=w`;
+
+    html += `
+      <div class="card" onclick="openDetail('${p.id}')">
+        <div class="card-header">
+          <div class="card-left">
+            <div class="card-cat">${getLabel(p.types)}</div>
+            <div class="card-name">${p.name}</div>
+            <div class="card-hours">${hoursHtml(p)}</div>
+          </div>
+          <div class="score-box">
+            <div class="score-num ${cls}">${p.score}</div>
+            <div class="score-lbl">Score</div>
+          </div>
+        </div>
+        <div class="card-divider"></div>
+        <div class="card-walk">🚶 徒歩 ${min}分（約${Math.round(p.distance)}m）</div>
+        <button class="btn-map"
+          onclick="event.stopPropagation(); window.open('${mapsUrl}','_blank')">
+          Google Maps で開く
+        </button>
+      </div>`;
+  }
+
+  list.innerHTML = html;
+}
+
+function retryLower(newThr) {
+  threshold = newThr;
+  renderResults(allResults, threshold);
+  document.getElementById('navSub').textContent =
+    document.getElementById('navSub').textContent.replace(/スコア\d+以上/, `スコア${newThr}以上`);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DETAIL
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function openDetail(id) {
+  const p = allResults.find(x => x.id === id);
+  if (!p) return;
+
+  const min = walkMin(p.distance);
+  const mapsUrl = `https://maps.google.com/maps?daddr=${p.lat},${p.lng}&dirflg=w`;
+
+  document.getElementById('detailBody').innerHTML = `
+    <div class="detail-hero">
+      <div class="detail-cat">${getLabel(p.types)}</div>
+      <div class="detail-name">${p.name}</div>
+      <div class="score-hero-row">
+        <div class="score-hero-num">${p.score}</div>
+        <div class="score-hero-right">
+          <div class="score-hero-lbl">Cleanliness Score</div>
+          <div class="score-bar-bg">
+            <div class="score-bar-fill" id="scoreFill" style="width:0%"></div>
+          </div>
+          <div class="score-reason">${getReason(p.types)}</div>
+        </div>
+      </div>
+    </div>
+    <div class="info-block">
+      <div class="info-row">
+        <div class="info-icon">🚶</div>
+        <div>
+          <div class="info-lbl">距離</div>
+          <div class="info-val">徒歩 ${min}分（約${Math.round(p.distance)}m）</div>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-icon">🕐</div>
+        <div>
+          <div class="info-lbl">営業時間</div>
+          <div class="info-val">${hoursHtml(p)}</div>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-icon">📍</div>
+        <div>
+          <div class="info-lbl">住所</div>
+          <div class="info-val">${p.address || '情報なし'}</div>
+        </div>
+      </div>
+    </div>
+    ${p.rating !== null
+      ? `<div class="google-row">
+           <div class="google-lbl">Google マップの評価（参考）</div>
+           <div class="google-stars">★ ${p.rating.toFixed(1)}</div>
+         </div>`
+      : ''}
+  `;
+
+  document.getElementById('ctaBtn').onclick = () => window.open(mapsUrl, '_blank');
+  goToDetail();
+
+  // Animate score bar after transition
+  setTimeout(() => {
+    const fill = document.getElementById('scoreFill');
+    if (fill) fill.style.width = p.score + '%';
+  }, 320);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SEARCH FLOWS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function startGeoSearch() {
+  if (!navigator.geolocation) { toast('位置情報がサポートされていません'); return; }
+  showScreen('loading');
+  document.getElementById('loadingMsg').textContent = '現在地を取得中...';
+
+  navigator.geolocation.getCurrentPosition(
+    async pos => {
+      currentLat = pos.coords.latitude;
+      currentLng = pos.coords.longitude;
+      await runSearch(currentLat, currentLng, '現在地付近');
+    },
+    () => {
+      showScreen('launch');
+      toast('位置情報を取得できませんでした。手動で入力してください。');
+    },
+    { timeout: 12000, enableHighAccuracy: true }
+  );
+}
+
+async function startTextSearch() {
+  const q = document.getElementById('manualInput').value.trim();
+  if (!q) return;
+  showScreen('loading');
+  document.getElementById('loadingMsg').textContent = '場所を検索中...';
+  try {
+    const p = await fetchByText(q);
+    if (!p) { showScreen('launch'); toast('場所が見つかりませんでした。'); return; }
+    currentLat = p.location.latitude;
+    currentLng = p.location.longitude;
+    await runSearch(currentLat, currentLng, p.displayName?.text || q);
+  } catch (e) {
+    showScreen('launch');
+    toast('検索中にエラーが発生しました。');
+    console.error(e);
+  }
+}
+
+async function runSearch(lat, lng, label) {
+  document.getElementById('loadingMsg').textContent = '近くの施設を検索中...';
+  threshold = 60;
+  try {
+    const raw = await fetchNearby(lat, lng);
+    allResults = process(raw, lat, lng);
+    document.getElementById('navSub').textContent = `${label} ／ スコア60以上を表示`;
+    renderResults(allResults, threshold);
+    showScreen('results');
+  } catch (e) {
+    showScreen('launch');
+    toast('情報を取得できませんでした。時間をおいて再試行してください。');
+    console.error(e);
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// EVENT LISTENERS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+document.getElementById('btnGeo').addEventListener('click', startGeoSearch);
+document.getElementById('btnText').addEventListener('click', startTextSearch);
+document.getElementById('manualInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startTextSearch();
+});
+document.getElementById('backBtn').addEventListener('click', goBack);
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SERVICE WORKER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
